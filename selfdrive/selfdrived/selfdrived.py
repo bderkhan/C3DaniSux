@@ -209,6 +209,9 @@ class SelfdriveD(CruiseHelper):
       self.events.add(EventName.resumeBlocked)
 
     dm_disabled = os.getenv("DISABLE_DRIVER_MONITORING") == "1" or self.params.get_bool("DisableDriverMonitoring")
+    dm_gentle = self.params.get_bool("GentleDriverMonitoring")
+    dm_soften = dm_disabled or dm_gentle
+
     if not self.CP.notCar and not dm_disabled:
       self.events.add_from_msg(self.sm['driverMonitoringState'].events)
 
@@ -216,6 +219,9 @@ class SelfdriveD(CruiseHelper):
     if CS.canValid:
       car_events = self.car_events.update(CS, self.CS_prev, self.sm['carControl']).to_msg()
       self.events.add_from_msg(car_events)
+      if dm_soften:
+        for e in (EventName.seatbeltNotLatched, EventName.wrongGear, EventName.reverseGear):
+          self.events.remove(e)
 
       car_events_sp = self.car_events_sp.update(CS, self.events).to_msg()
       self.events_sp.add_from_msg(car_events_sp)

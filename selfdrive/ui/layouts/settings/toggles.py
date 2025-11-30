@@ -21,6 +21,7 @@ DESCRIPTIONS = {
   ),
   "AlwaysOnDM": "Enable driver monitoring even when openpilot is not engaged.",
   "DisableDriverMonitoring": "Turn off driver monitoring alerts and force no driver-attention disengages (Dani). Reboot after changing to fully apply.",
+  "GentleDriverMonitoring": "Reminder-only driver monitoring: single beep every 3 minutes of no attention, no disengage.",
   'RecordFront': "Upload data from the driver facing camera and help improve the driver monitoring algorithm.",
   "IsMetric": "Display speed in km/h instead of mph.",
   "RecordAudio": "Record and store microphone audio while driving. The audio will be included in the dashcam video in comma connect.",
@@ -74,6 +75,12 @@ class TogglesLayout(Widget):
         "Disable Driver Monitoring (Dani)",
         DESCRIPTIONS["DisableDriverMonitoring"],
         self._params.get_bool("DisableDriverMonitoring"),
+        icon="monitoring.png",
+      ),
+      toggle_item(
+        "Gentle Driver Reminder (3 min)",
+        DESCRIPTIONS["GentleDriverMonitoring"],
+        self._params.get_bool("GentleDriverMonitoring"),
         icon="monitoring.png",
       ),
       toggle_item(

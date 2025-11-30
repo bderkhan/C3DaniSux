@@ -2,17 +2,23 @@
 import os
 
 import cereal.messaging as messaging
+from cereal import log
 from openpilot.common.params import Params
 from openpilot.common.realtime import config_realtime_process, Ratekeeper, DT_DMON
 from openpilot.selfdrive.monitoring.helpers import DriverMonitoring
+from openpilot.selfdrive.selfdrived.events import Events
 
 
 def dm_disabled(params: Params) -> bool:
   return os.getenv("DISABLE_DRIVER_MONITORING") == "1" or params.get_bool("DisableDriverMonitoring")
 
 
-def build_stub_dm_state(params: Params | None = None):
-  """Return a safe driverMonitoringState that never triggers alerts."""
+EventName = log.OnroadEvent.EventName
+
+
+def build_stub_dm_state(params: Params | None = None, *, face_detected: bool = False,
+                        distracted: bool = False, events: list[EventName] | None = None):
+  """Return a driverMonitoringState with optional one-off events and no disengage behavior."""
   rhd = False
   if params is not None:
     try:
@@ -22,9 +28,9 @@ def build_stub_dm_state(params: Params | None = None):
 
   dat = messaging.new_message('driverMonitoringState', valid=True)
   dat.driverMonitoringState = {
-    "events": [],
-    "faceDetected": False,
-    "isDistracted": False,
+    "events": Events().to_msg(),
+    "faceDetected": face_detected,
+    "isDistracted": distracted,
     "distractedType": 0,
     "awarenessStatus": 1.0,
     "posePitchOffset": 0.0,
@@ -39,6 +45,13 @@ def build_stub_dm_state(params: Params | None = None):
     "isActiveMode": True,
     "isRHD": rhd,
   }
+
+  if events:
+    ev = Events()
+    for e in events:
+      ev.add(e)
+    dat.driverMonitoringState.events = ev.to_msg()
+
   return dat
 
 
@@ -47,6 +60,9 @@ def dmonitoringd_thread():
 
   params = Params()
   pm = messaging.PubMaster(['driverMonitoringState'])
+  gentle_reminder = params.get_bool("GentleDriverMonitoring")
+  not_attentive_time = 0.0
+  last_frame_id = None
   sm = messaging.SubMaster(['driverStateV2', 'liveCalibration', 'carState', 'selfdriveState', 'modelV2',
                             'carControl'], poll='driverStateV2')
 
@@ -56,12 +72,40 @@ def dmonitoringd_thread():
   while True:
     sm.update()
 
+    gentle_reminder = params.get_bool("GentleDriverMonitoring")
+
     if dm_disabled(params):
       pm.send('driverMonitoringState', build_stub_dm_state(params))
       continue
 
     if not sm.updated['driverStateV2']:
       # iterate when model has new output
+      continue
+
+    if gentle_reminder:
+      ds = sm['driverStateV2']
+      frame_id = ds.frameId
+      if last_frame_id is None:
+        last_frame_id = frame_id
+      dt = max((frame_id - last_frame_id) * DT_DMON, DT_DMON)
+      last_frame_id = frame_id
+
+      wheel_on_right = ds.wheelOnRightProb > 0.5
+      driver_data = ds.rightDriverData if wheel_on_right else ds.leftDriverData
+      attentive = driver_data.faceProb > 0.5 and driver_data.occludedProb < 0.5
+
+      alert = False
+      if attentive:
+        not_attentive_time = 0.0
+      else:
+        not_attentive_time += dt
+        if not_attentive_time >= 180.0:
+          alert = True
+          not_attentive_time = 0.0
+
+      events = [EventName.promptDriverDistracted] if alert else None
+      pm.send('driverMonitoringState', build_stub_dm_state(params, face_detected=attentive,
+                                                          distracted=not attentive, events=events))
       continue
 
     valid = sm.all_checks()

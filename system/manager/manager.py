@@ -37,6 +37,8 @@ def manager_init() -> None:
   # Default to DM off for this experimental build; allow UI toggle to change it.
   if params.get("DisableDriverMonitoring") is None:
     params.put_bool("DisableDriverMonitoring", True)
+  if params.get("GentleDriverMonitoring") is None:
+    params.put_bool("GentleDriverMonitoring", False)
 
   disable_dm = params.get_bool("DisableDriverMonitoring")
   if disable_dm:

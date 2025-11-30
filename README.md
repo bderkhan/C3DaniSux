@@ -72,12 +72,47 @@ If you already have this software installed:
 
 This repository is set up for independent development and testing. Make modifications as needed and push to your own branch.
 
-### Driver Monitoring (DM) experiment
+### Driver Monitoring (DM) Features
 
-- Default behavior on this branch is **DM disabled** for C3 testing. A new toggle lives under `Settings ▸ Device ▸ Settings ▸ Disable Driver Monitoring (Dani)`.
-- When off, we publish stub driver monitoring/model messages, suppress DM alerts/force-decel, and keep the driver cam/IR off by default. Turn the toggle off and reboot to keep DM off; turn it on and reboot to re-enable the camera/DM path.
-- This is a temporary shim while the new driver monitor is being developed.
-- A second option, `Gentle Driver Reminder (3 min)`, keeps DM very light: a single beep every 3 minutes of no attention, no disengage or steering shake. Looking back resets the 3-minute timer.
+This branch includes enhanced driver monitoring options for C3 testing and development. Two toggle options are available under `Settings ▸ Device ▸ Settings`:
+
+#### Option 1: Disable Driver Monitoring (Dani)
+
+- **Location**: `Settings ▸ Device ▸ Settings ▸ Disable Driver Monitoring (Dani)`
+- **Behavior when enabled**:
+  - Completely disables driver monitoring alerts and force-decel
+  - Publishes stub driver monitoring/model messages
+  - Keeps driver camera/IR off by default
+  - No driver attention disengages
+- **Usage**: Toggle on to disable DM, toggle off to re-enable. **Reboot required** after changing to fully apply camera state changes.
+
+#### Option 2: Gentle Driver Reminder (3 min)
+
+- **Location**: `Settings ▸ Device ▸ Settings ▸ Gentle Driver Reminder (3 min)`
+- **Behavior when enabled**:
+  - Light reminder-only mode: single beep every 3 minutes of no attention
+  - No disengage or steering shake warnings
+  - No awareness decay or force decel
+  - Looking back resets the 3-minute timer
+- **Usage**: Toggle on for gentle reminders, toggle off for full DM behavior.
+
+#### Gear/Seatbelt Bypass Feature
+
+When **either** DM toggle is enabled (Disable Driver Monitoring OR Gentle Driver Reminder):
+- **Gear detection bypassed**: Openpilot won't refuse or disable for being out of Drive gear
+- **Seatbelt detection bypassed**: Openpilot won't refuse or disable for seatbelt not latched
+- **Reverse gear bypassed**: Openpilot won't disable for reverse gear detection
+
+This allows testing and operation without gear/seatbelt restrictions when DM modifications are active.
+
+#### Default Behavior
+
+- Default behavior on this branch is **DM disabled** for C3 testing
+- Both toggles are **off** by default (full DM behavior)
+- This is a temporary shim while the new driver monitor is being developed
+
+> [!NOTE]
+> **Reboot Required**: After toggling either DM option, reboot the device to ensure camera state and all services properly initialize with the new settings.
 
 > [!WARNING]
 > **CRITICAL**: Always base your work on `staging-tici` branch only. This repository is specifically for comma 3 devices. Do not merge or use code from branches intended for comma 3X or other devices.
@@ -548,29 +583,39 @@ If you modified driver monitoring:
    # SSH into device
    cat /data/params/d/DisableDriverMonitoring
    # Returns: "1" (disabled) or "0" (enabled)
+   
+   cat /data/params/d/GentleDriverMonitoring
+   # Returns: "1" (gentle mode) or "0" (disabled)
    ```
 
 2. **Toggle in UI:**
    - Go to `Settings` ▶️ `Device` ▶️ `Settings`
-   - Toggle "Disable Driver Monitoring (Dani)"
+   - **Option 1**: Toggle "Disable Driver Monitoring (Dani)" - completely disables DM
+   - **Option 2**: Toggle "Gentle Driver Reminder (3 min)" - light reminder mode
    - **Reboot** device (required for camera changes)
 
 3. **Verify after reboot:**
    ```bash
-   # Check param again
+   # Check params again
    cat /data/params/d/DisableDriverMonitoring
-   
+   cat /data/params/d/GentleDriverMonitoring
+
    # Monitor dmonitoringd logs
    journalctl -u dmonitoringd -f
-   
+
    # Should see:
-   # - When disabled: Stub messages, no alerts
-   # - When enabled: Real DM processing, alerts if needed
+   # - When DisableDriverMonitoring=1: Stub messages, no alerts, no force decel
+   # - When GentleDriverMonitoring=1: Light reminders every 3 min, no disengage
+   # - When both=0: Full DM behavior with alerts and disengages
    ```
 
 4. **Test functionality:**
    - Drive and verify DM alerts behavior matches toggle state
    - Check that driver camera state matches setting
+   - **Test gear/seatbelt bypass**: When either toggle is on, verify openpilot doesn't disable for:
+     - Being out of Drive gear
+     - Seatbelt not latched
+     - Reverse gear detection
 
 #### Testing Controls Changes
 
@@ -733,8 +778,9 @@ journalctl -u manager --since "10 min ago" | grep -i error
 # Check git commit
 cd /data/openpilot && git log --oneline -1
 
-# Check params
+# Check DM params
 cat /data/params/d/DisableDriverMonitoring
+cat /data/params/d/GentleDriverMonitoring
 
 # Restart services
 systemctl restart manager
