@@ -123,13 +123,13 @@ The remote is already configured to point to: `https://github.com/bderkhan/C3Dan
    - Enter your GitHub username (device will fetch your SSH keys)
 
 2. **Connect via WiFi:**
-   
+
    **Option A: Device in tethered/hotspot mode:**
    - When device acts as WiFi hotspot, use: `192.168.43.1`
    ```bash
    ssh comma@192.168.43.1
    ```
-   
+
    **Option B: Device connected to your router:**
    - Find the device IP on your network (shown on device screen or check router admin)
    - Example if your router uses `192.168.86.XXX`:
@@ -172,10 +172,10 @@ The remote is already configured to point to: `https://github.com/bderkhan/C3Dan
    ```bash
    # Over USB
    adb shell
-   
+
    # Over WiFi (tethered/hotspot mode)
    adb connect 192.168.43.1:5555
-   
+
    # Over WiFi (router network - replace with device IP)
    adb connect 192.168.86.XXX:5555
    ```
@@ -285,7 +285,7 @@ adb pull /data/media/0/realdata/{route_name} ./logs/
    # If tethered: ./compressed_vipc.py 192.168.43.1
    # If on router: ./compressed_vipc.py 192.168.86.XXX
    ./compressed_vipc.py <device_ip>
-   
+
    # View stream (separate terminal)
    cd selfdrive/ui
    ./watch3
@@ -405,6 +405,343 @@ tail -f /tmp/shm/logcat
 - **openpilot Wiki**: https://github.com/commaai/openpilot/wiki
 - **sunnypilot Discord**: https://discord.gg/sunnypilot (for community support)
 - **Log Analysis Tools**: See `tools/lib/logreader.py` for reading logs programmatically
+
+## 🚀 Testing New Changes - Complete Workflow
+
+This section walks you through the complete process of uploading, monitoring, and testing your changes on a comma device.
+
+### Step 1: Make Changes Locally
+
+1. **Make your code changes** in your local repository
+2. **Test locally** if possible (syntax, logic, etc.)
+3. **Commit your changes:**
+   ```bash
+   git add .
+   git commit -m "Description of your changes"
+   ```
+
+### Step 2: Push to GitHub
+
+```bash
+git push origin custom-staging-c3
+```
+
+**Verify the push:**
+- Check GitHub: https://github.com/bderkhan/C3DaniSux/tree/custom-staging-c3
+- Confirm your commit appears in the commit history
+
+### Step 3: Install/Update on Device
+
+#### First Time Installation
+
+1. On your comma three, go to `Settings` ▶️ `Software`
+2. Select `Custom Software`
+3. Enter installation URL: `https://github.com/bderkhan/C3DaniSux.git`
+4. Specify branch: `custom-staging-c3`
+5. Complete installation following on-screen instructions
+6. **Reboot** the device after installation
+
+#### Updating Existing Installation
+
+1. On your comma three, go to `Settings` ▶️ `Software`
+2. At `Download`, press `CHECK` to fetch latest updates
+3. At `Target Branch`, press `SELECT` and choose `custom-staging-c3`
+4. Device will download and install the latest version
+5. **Reboot** the device after update
+
+> [!TIP]
+> Always reboot after installing/updating to ensure clean state and proper initialization of all services.
+
+### Step 4: Connect to Device for Monitoring
+
+**Choose your connection method:**
+
+#### Option A: SSH (Recommended for monitoring)
+
+```bash
+# If device is tethered/hotspot mode
+ssh comma@192.168.43.1
+
+# If device is on your router network (replace with actual IP)
+ssh comma@192.168.86.XXX
+```
+
+#### Option B: ADB
+
+```bash
+# Over USB
+adb shell
+
+# Over WiFi
+adb connect 192.168.86.XXX:5555  # Replace with device IP
+adb shell
+```
+
+### Step 5: Monitor Logs in Real-Time
+
+Once connected, monitor relevant processes:
+
+#### Monitor All Manager Processes
+
+```bash
+# Watch all openpilot services
+journalctl -u manager -f
+```
+
+#### Monitor Specific Processes
+
+```bash
+# Controls (steering, gas, brake)
+journalctl -u controlsd -f
+
+# Driver monitoring
+journalctl -u dmonitoringd -f
+
+# Driver monitoring model
+journalctl -u dmonitoringmodeld -f
+
+# Model inference
+journalctl -u modeld -f
+
+# Self-drive state
+journalctl -u selfdrived -f
+```
+
+#### Monitor Multiple Processes Simultaneously
+
+```bash
+# Watch multiple services at once
+journalctl -u manager -u controlsd -u dmonitoringd -f
+```
+
+#### Check for Errors
+
+```bash
+# View recent errors
+journalctl -u manager --since "10 minutes ago" | grep -i error
+
+# View warnings
+journalctl -u manager --since "10 minutes ago" | grep -i warn
+
+# View crashes
+journalctl -u manager --since "1 hour ago" | grep -i crash
+```
+
+### Step 6: Test Your Changes
+
+#### General Testing Workflow
+
+1. **Start monitoring logs** (Step 5) in a terminal
+2. **Drive the vehicle** or test in a safe location
+3. **Observe behavior** and watch logs for:
+   - Expected functionality working
+   - No errors or crashes
+   - Correct parameter values
+   - Proper message publishing
+
+#### Testing DM Toggle Changes
+
+If you modified driver monitoring:
+
+1. **Check current DM state:**
+   ```bash
+   # SSH into device
+   cat /data/params/d/DisableDriverMonitoring
+   # Returns: "1" (disabled) or "0" (enabled)
+   ```
+
+2. **Toggle in UI:**
+   - Go to `Settings` ▶️ `Device` ▶️ `Settings`
+   - Toggle "Disable Driver Monitoring (Dani)"
+   - **Reboot** device (required for camera changes)
+
+3. **Verify after reboot:**
+   ```bash
+   # Check param again
+   cat /data/params/d/DisableDriverMonitoring
+   
+   # Monitor dmonitoringd logs
+   journalctl -u dmonitoringd -f
+   
+   # Should see:
+   # - When disabled: Stub messages, no alerts
+   # - When enabled: Real DM processing, alerts if needed
+   ```
+
+4. **Test functionality:**
+   - Drive and verify DM alerts behavior matches toggle state
+   - Check that driver camera state matches setting
+
+#### Testing Controls Changes
+
+If you modified controls:
+
+1. **Monitor controlsd:**
+   ```bash
+   journalctl -u controlsd -f
+   ```
+
+2. **Drive and test:**
+   - Engage openpilot
+   - Test steering, acceleration, braking
+   - Watch logs for expected behavior
+
+3. **Check for errors:**
+   ```bash
+   journalctl -u controlsd --since "5 minutes ago" | grep -i error
+   ```
+
+### Step 7: Verify Changes Are Active
+
+#### Check Git Commit on Device
+
+```bash
+# SSH into device
+cd /data/openpilot
+git log --oneline -5
+
+# Should show your latest commit
+```
+
+#### Check Process Status
+
+```bash
+# Verify all processes are running
+systemctl status manager
+systemctl status controlsd
+systemctl status dmonitoringd
+
+# Check if processes restarted recently (after your update)
+systemctl show controlsd -p ActiveEnterTimestamp
+```
+
+#### Verify Parameters
+
+```bash
+# List all params
+ls /data/params/d/
+
+# Check specific param
+cat /data/params/d/DisableDriverMonitoring
+cat /data/params/d/YourCustomParam
+```
+
+### Step 8: Collect Logs for Analysis
+
+#### Download Recent Route
+
+```bash
+# From your local machine
+# Find latest route on device
+ssh comma@192.168.86.XXX "ls -t /data/media/0/realdata/ | head -1"
+
+# Download it
+scp -r comma@192.168.86.XXX:/data/media/0/realdata/{route_name} ./logs/
+
+# Or use ADB
+adb pull /data/media/0/realdata/{route_name} ./logs/
+```
+
+#### Analyze Logs Locally
+
+```bash
+# Use openpilot tools to analyze
+cd tools
+python3 -m tools.lib.logreader logs/{route_name}/rlog.bz2
+```
+
+### Step 9: Troubleshooting Issues
+
+#### If Changes Don't Appear
+
+1. **Verify installation:**
+   ```bash
+   cd /data/openpilot
+   git log --oneline -1
+   git status
+   ```
+
+2. **Check if update completed:**
+   ```bash
+   # Check systemd logs
+   journalctl -u manager --since "1 hour ago" | grep -i update
+   ```
+
+3. **Force reinstall:**
+   - Go to `Settings` ▶️ `Software` ▶️ `Uninstall`
+   - Reinstall following Step 3
+
+#### If Processes Crash
+
+1. **Check crash logs:**
+   ```bash
+   journalctl -u manager --since "30 minutes ago" | tail -100
+   ```
+
+2. **Check system resources:**
+   ```bash
+   df -h    # Disk space
+   free -h  # Memory
+   top      # CPU usage
+   ```
+
+3. **Restart services:**
+   ```bash
+   systemctl restart manager
+   ```
+
+#### If Behavior Is Unexpected
+
+1. **Verify params are correct:**
+   ```bash
+   cat /data/params/d/YourParam
+   ```
+
+2. **Check for conflicting settings:**
+   - Review all related params
+   - Check UI settings match expected state
+
+3. **Review logs around issue:**
+   ```bash
+   # Get logs from time of issue
+   journalctl -u controlsd --since "2024-01-01 12:00:00" --until "2024-01-01 12:30:00"
+   ```
+
+### Step 10: Iterate and Improve
+
+1. **Make additional changes** if needed
+2. **Push updates** to GitHub
+3. **Update device** again (Step 3)
+4. **Test again** (Steps 5-7)
+5. **Repeat** until satisfied
+
+### Quick Reference: Common Commands
+
+```bash
+# Connect
+ssh comma@192.168.86.XXX
+
+# Monitor everything
+journalctl -u manager -f
+
+# Check specific service
+journalctl -u controlsd -f
+
+# View errors
+journalctl -u manager --since "10 min ago" | grep -i error
+
+# Check git commit
+cd /data/openpilot && git log --oneline -1
+
+# Check params
+cat /data/params/d/DisableDriverMonitoring
+
+# Restart services
+systemctl restart manager
+
+# Download logs
+scp -r comma@192.168.86.XXX:/data/media/0/realdata/{route} ./logs/
+```
 
 ## 📄 License
 
