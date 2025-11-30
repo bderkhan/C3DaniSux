@@ -32,20 +32,34 @@ This repository is based on sunnypilot's `staging-tici` branch, which is specifi
 
 ## 📦 Installation
 
-To install this custom version on your comma 3 device:
+To install this custom version on your comma 3 device, you need to use a proper installer URL format. **Direct GitHub URLs do not work** - you must use one of the installer services below.
 
-**C3 install URL (custom software):** `https://github.com/bderkhan/C3DaniSux.git` with branch `custom-staging-c3`
+### Installation URL Options
+
+**Option 1: Community Installer (Recommended)**
+```
+https://smiskol.com/fork/bderkhan/C3DaniSux/custom-staging-c3
+```
+
+**Option 2: Comma Installer Format**
+```
+installer.comma.ai/bderkhan/custom-staging-c3
+```
+> [!NOTE]
+> This format may require your repository to be named `openpilot`. If it doesn't work, use Option 1.
+
+**Option 3: Simple Format (if supported)**
+```
+bderkhan/C3DaniSux/custom-staging-c3
+```
 
 ### First Time Installation
 
 1. On your comma three, go to `Settings` ▶️ `Software`
 2. Select `Custom Software` when prompted
-3. Enter the installation URL:
-   ```
-   https://github.com/bderkhan/C3DaniSux.git
-   ```
-4. Specify the branch: `custom-staging-c3`
-5. Complete the rest of the installation following the onscreen instructions
+3. Enter **one of the installation URLs above** (try Option 1 first)
+4. Complete the rest of the installation following the onscreen instructions
+5. **Reboot** the device after installation
 
 ### Updating Existing Installation
 
@@ -55,12 +69,16 @@ If you already have this software installed:
 2. At the `Download` option, press `CHECK` to fetch the latest updates
 3. At the `Target Branch` option, press `SELECT` and choose `custom-staging-c3`
 4. The device will download and install the latest version
+5. **Reboot** the device after update
 
-### Installation URL Format
+### Troubleshooting Installation
 
-- **Repository URL**: `https://github.com/bderkhan/C3DaniSux.git`
-- **Branch**: `custom-staging-c3`
-- **Alternative format**: `bderkhan/C3DaniSux/custom-staging-c3` (if supported by your device)
+**If you get "Download Failed":**
+- Try Option 1 (smiskol.com/fork) first - it's the most reliable
+- Ensure your repository is **public** on GitHub
+- Check your device's internet connection
+- Verify the branch name `custom-staging-c3` exists in your repository
+- Try the alternative URL formats listed above
 
 > [!IMPORTANT]
 > **You MUST use the `staging-tici` based branch (`custom-staging-c3`) only. Do not attempt to use branches intended for comma 3X or other devices, as they are not compatible with comma 3.**
@@ -471,10 +489,12 @@ git push origin custom-staging-c3
 
 1. On your comma three, go to `Settings` ▶️ `Software`
 2. Select `Custom Software`
-3. Enter installation URL: `https://github.com/bderkhan/C3DaniSux.git`
-4. Specify branch: `custom-staging-c3`
-5. Complete installation following on-screen instructions
-6. **Reboot** the device after installation
+3. Enter installation URL (use one of these formats):
+   - **Recommended**: `https://smiskol.com/fork/bderkhan/C3DaniSux/custom-staging-c3`
+   - Alternative: `installer.comma.ai/bderkhan/custom-staging-c3`
+   - Alternative: `bderkhan/C3DaniSux/custom-staging-c3`
+4. Complete installation following on-screen instructions
+5. **Reboot** the device after installation
 
 #### Updating Existing Installation
 
@@ -583,7 +603,7 @@ If you modified driver monitoring:
    # SSH into device
    cat /data/params/d/DisableDriverMonitoring
    # Returns: "1" (disabled) or "0" (enabled)
-   
+
    cat /data/params/d/GentleDriverMonitoring
    # Returns: "1" (gentle mode) or "0" (disabled)
    ```
