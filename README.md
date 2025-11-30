@@ -122,9 +122,26 @@ The remote is already configured to point to: `https://github.com/bderkhan/C3Dan
    - Enable SSH
    - Enter your GitHub username (device will fetch your SSH keys)
 
-2. **Connect via WiFi (tethered connection):**
+2. **Connect via WiFi:**
+   
+   **Option A: Device in tethered/hotspot mode:**
+   - When device acts as WiFi hotspot, use: `192.168.43.1`
    ```bash
    ssh comma@192.168.43.1
+   ```
+   
+   **Option B: Device connected to your router:**
+   - Find the device IP on your network (shown on device screen or check router admin)
+   - Example if your router uses `192.168.86.XXX`:
+   ```bash
+   ssh comma@192.168.86.XXX
+   ```
+   - Or scan your network:
+   ```bash
+   # On macOS/Linux
+   arp -a | grep -i comma
+   # Or use nmap
+   nmap -sn 192.168.86.0/24
    ```
 
 3. **Connect via comma Prime (remote access):**
@@ -136,7 +153,7 @@ The remote is already configured to point to: `https://github.com/bderkhan/C3Dan
        User comma
        IdentityFile ~/.ssh/my_github_key
        ProxyCommand ssh %h@ssh.comma.ai -W %h:%p
-     
+
      Host ssh.comma.ai
        Hostname ssh.comma.ai
        Port 22
@@ -156,8 +173,11 @@ The remote is already configured to point to: `https://github.com/bderkhan/C3Dan
    # Over USB
    adb shell
    
-   # Over WiFi
+   # Over WiFi (tethered/hotspot mode)
    adb connect 192.168.43.1:5555
+   
+   # Over WiFi (router network - replace with device IP)
+   adb connect 192.168.86.XXX:5555
    ```
 
 #### Serial Console (Low-level debugging)
@@ -234,8 +254,10 @@ adb pull /data/media/0/realdata/{route_name} ./logs/
 
 2. **On your PC:**
    ```bash
-   # Using Cabana
-   cabana --zmq 192.168.43.1
+   # Using Cabana (replace with device IP)
+   # If tethered: cabana --zmq 192.168.43.1
+   # If on router: cabana --zmq 192.168.86.XXX
+   cabana --zmq <device_ip>
    ```
 
 #### Live Camera Stream
@@ -245,22 +267,24 @@ adb pull /data/media/0/realdata/{route_name} ./logs/
    (
      cd /data/openpilot/cereal/messaging/
      ./bridge &
-     
+
      cd /data/openpilot/system/camerad/
      ./camerad &
-     
+
      cd /data/openpilot/system/loggerd/
      ./encoderd &
-     
+
      wait
    ) ; trap 'kill $(jobs -p)' SIGINT
    ```
 
 2. **On your PC:**
    ```bash
-   # Decode stream
+   # Decode stream (replace with device IP)
    cd tools/camerastream
-   ./compressed_vipc.py 192.168.43.1
+   # If tethered: ./compressed_vipc.py 192.168.43.1
+   # If on router: ./compressed_vipc.py 192.168.86.XXX
+   ./compressed_vipc.py <device_ip>
    
    # View stream (separate terminal)
    cd selfdrive/ui
@@ -365,10 +389,15 @@ tail -f /tmp/shm/logcat
 
 1. **Verify SSH is enabled** in device settings
 2. **Re-enter GitHub username** in settings (refreshes SSH keys)
-3. **Check device IP:**
-   - Device shows IP on screen when tethered
-   - Default: `192.168.43.1` when tethered
-4. **Try ADB instead** as alternative
+3. **Find device IP:**
+   - **Tethered mode**: Device shows IP on screen (usually `192.168.43.1`)
+   - **Router network**: Check device screen or router admin panel for assigned IP (e.g., `192.168.86.XXX`)
+   - **Scan network**: `arp -a | grep -i comma` or check router's connected devices list
+4. **Verify network connectivity:**
+   ```bash
+   ping <device_ip>
+   ```
+5. **Try ADB instead** as alternative
 
 ### Additional Resources
 
@@ -395,5 +424,5 @@ This repository maintains the same licensing as sunnypilot:
 
 ---
 
-**Repository Owner**: bderkhan  
+**Repository Owner**: bderkhan
 **Repository Name**: C3DaniSux
