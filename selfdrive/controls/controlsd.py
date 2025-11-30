@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import math
 import threading
 import time
@@ -68,7 +69,13 @@ class Controls(ControlsExt, ModelStateBase):
     elif self.CP.lateralTuning.which() == 'torque':
       self.LaC = LatControlTorque(self.CP, self.CP_SP, self.CI)
 
+    self.dm_disabled = os.getenv("DISABLE_DRIVER_MONITORING") == "1" or self.params.get_bool("DisableDriverMonitoring")
+
+  def _refresh_dm_disabled(self):
+    self.dm_disabled = os.getenv("DISABLE_DRIVER_MONITORING") == "1" or self.params.get_bool("DisableDriverMonitoring")
+
   def update(self):
+    self._refresh_dm_disabled()
     self.sm.update(15)
     if self.sm.updated["liveCalibration"]:
       self.pose_calibrator.feed_live_calib(self.sm['liveCalibration'])
@@ -210,8 +217,9 @@ class Controls(ControlsExt, ModelStateBase):
     cs.upAccelCmd = float(self.LoC.pid.p)
     cs.uiAccelCmd = float(self.LoC.pid.i)
     cs.ufAccelCmd = float(self.LoC.pid.f)
-    cs.forceDecel = bool((self.sm['driverMonitoringState'].awarenessStatus < 0.) or
-                         (self.sm['selfdriveState'].state == State.softDisabling))
+    dm_awareness = self.sm['driverMonitoringState'].awarenessStatus
+    cs.forceDecel = False if self.dm_disabled else bool((dm_awareness < 0.) or
+                                                        (self.sm['selfdriveState'].state == State.softDisabling))
 
     lat_tuning = self.CP.lateralTuning.which()
     if self.CP.steerControlType == car.CarParams.SteerControlType.angle:

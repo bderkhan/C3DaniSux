@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+
 from openpilot.system.hardware import TICI
 os.environ['DEV'] = 'QCOM' if TICI else 'LLVM'
 from tinygrad.tensor import Tensor
@@ -15,9 +16,10 @@ from cereal import messaging
 from cereal.messaging import PubMaster, SubMaster
 from msgq.visionipc import VisionIpcClient, VisionStreamType, VisionBuf
 from openpilot.common.swaglog import cloudlog
-from openpilot.common.realtime import config_realtime_process
+from openpilot.common.realtime import config_realtime_process, Ratekeeper, DT_DMON
 from openpilot.common.transformations.model import dmonitoringmodel_intrinsics, DM_INPUT_SIZE
 from openpilot.common.transformations.camera import _ar_ox_fisheye, _os_fisheye
+from openpilot.common.params import Params
 from openpilot.selfdrive.modeld.models.commonmodel_pyx import CLContext, MonitoringModelFrame
 from openpilot.selfdrive.modeld.parse_model_outputs import sigmoid
 from openpilot.selfdrive.modeld.runners.tinygrad_helpers import qcom_tensor_from_opencl_address
@@ -30,6 +32,37 @@ OUTPUT_SIZE = 84 + FEATURE_LEN
 PROCESS_NAME = "selfdrive.modeld.dmonitoringmodeld"
 SEND_RAW_PRED = os.getenv('SEND_RAW_PRED')
 MODEL_PKL_PATH = Path(__file__).parent / 'models/dmonitoring_model_tinygrad.pkl'
+
+
+def dm_disabled(params: Params) -> bool:
+  return os.getenv("DISABLE_DRIVER_MONITORING") == "1" or params.get_bool("DisableDriverMonitoring")
+
+
+def build_stub_driver_state(frame_id: int):
+  msg = messaging.new_message('driverStateV2', valid=True)
+  ds = msg.driverStateV2
+  ds.frameId = frame_id
+  ds.modelExecutionTime = 0.0
+  ds.gpuExecutionTime = 0.0
+  ds.poorVisionProb = 0.0
+  ds.wheelOnRightProb = 0.0
+  ds.rawPredictions = b''
+
+  for drv in (ds.leftDriverData, ds.rightDriverData):
+    drv.faceOrientation = [0.0, 0.0, 0.0]
+    drv.faceOrientationStd = [1.0, 1.0, 1.0]
+    drv.facePosition = [0.0, 0.0]
+    drv.facePositionStd = [1.0, 1.0]
+    drv.faceProb = 0.0
+    drv.leftEyeProb = 0.0
+    drv.rightEyeProb = 0.0
+    drv.leftBlinkProb = 0.0
+    drv.rightBlinkProb = 0.0
+    drv.sunglassesProb = 0.0
+    drv.occludedProb = 0.0
+    drv.readyProb = [0.0, 0.0, 0.0, 0.0]
+    drv.notReadyProb = [0.0, 0.0]
+  return msg
 
 
 class DriverStateResult(ctypes.Structure):
@@ -130,6 +163,19 @@ def get_driverstate_packet(model_output: np.ndarray, frame_id: int, location_ts:
 def main():
   config_realtime_process(7, 5)
 
+  params = Params()
+  rk_stub = Ratekeeper(1.0 / DT_DMON)
+  stub_frame_id = 0
+
+  if dm_disabled(params) and os.getenv("DISABLE_DRIVER") == "1":
+    cloudlog.warning("driver monitoring disabled; driver camera off; publishing stub driverStateV2")
+    pm = PubMaster(["driverStateV2"])
+    while True:
+      pm.send("driverStateV2", build_stub_driver_state(stub_frame_id))
+      stub_frame_id += 1
+      rk_stub.keep_time()
+    return
+
   cl_context = CLContext()
   model = ModelState(cl_context)
   cloudlog.warning("models loaded, dmonitoringmodeld starting")
@@ -148,6 +194,12 @@ def main():
   model_transform = None
 
   while True:
+    if dm_disabled(params):
+      pm.send("driverStateV2", build_stub_driver_state(stub_frame_id))
+      stub_frame_id += 1
+      rk_stub.keep_time()
+      continue
+
     buf = vipc_client.recv()
     if buf is None:
       continue

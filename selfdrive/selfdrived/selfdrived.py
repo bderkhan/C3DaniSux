@@ -208,7 +208,8 @@ class SelfdriveD(CruiseHelper):
     if not self.CP.pcmCruise and CS.vCruise > 250 and resume_pressed:
       self.events.add(EventName.resumeBlocked)
 
-    if not self.CP.notCar:
+    dm_disabled = os.getenv("DISABLE_DRIVER_MONITORING") == "1" or self.params.get_bool("DisableDriverMonitoring")
+    if not self.CP.notCar and not dm_disabled:
       self.events.add_from_msg(self.sm['driverMonitoringState'].events)
 
     # Add car events, ignore if CAN isn't valid

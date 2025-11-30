@@ -34,6 +34,8 @@ This repository is based on sunnypilot's `staging-tici` branch, which is specifi
 
 To install this custom version on your comma 3 device:
 
+**C3 install URL (custom software):** `https://github.com/bderkhan/C3DaniSux.git` with branch `custom-staging-c3`
+
 ### First Time Installation
 
 1. On your comma three, go to `Settings` ▶️ `Software`
@@ -69,6 +71,12 @@ If you already have this software installed:
 ## 🔧 Development
 
 This repository is set up for independent development and testing. Make modifications as needed and push to your own branch.
+
+### Driver Monitoring (DM) experiment
+
+- Default behavior on this branch is **DM disabled** for C3 testing. A new toggle lives under `Settings ▸ Device ▸ Settings ▸ Disable Driver Monitoring (Dani)`.
+- When off, we publish stub driver monitoring/model messages, suppress DM alerts/force-decel, and keep the driver cam/IR off by default. Turn the toggle off and reboot to keep DM off; turn it on and reboot to re-enable the camera/DM path.
+- This is a temporary shim while the new driver monitor is being developed.
 
 > [!WARNING]
 > **CRITICAL**: Always base your work on `staging-tici` branch only. This repository is specifically for comma 3 devices. Do not merge or use code from branches intended for comma 3X or other devices.
@@ -122,4 +130,3 @@ This repository maintains the same licensing as sunnypilot:
 
 **Repository Owner**: bderkhan  
 **Repository Name**: C3DaniSux
-

@@ -34,6 +34,20 @@ def manager_init() -> None:
   if build_metadata.release_channel:
     params.clear_all(ParamKeyFlag.DEVELOPMENT_ONLY)
 
+  # Default to DM off for this experimental build; allow UI toggle to change it.
+  if params.get("DisableDriverMonitoring") is None:
+    params.put_bool("DisableDriverMonitoring", True)
+
+  disable_dm = params.get_bool("DisableDriverMonitoring")
+  if disable_dm:
+    os.environ["DISABLE_DRIVER_MONITORING"] = "1"
+    # Keep driver cam/IR off by default when DM is disabled. Clearing this param
+    # and rebooting will re-enable the driver camera path.
+    os.environ["DISABLE_DRIVER"] = "1"
+  else:
+    os.environ.pop("DISABLE_DRIVER_MONITORING", None)
+    os.environ.pop("DISABLE_DRIVER", None)
+
   # device boot mode
   if params.get("DeviceBootMode") == 1:  # start in Always Offroad mode
     params.put_bool("OffroadMode", True)
