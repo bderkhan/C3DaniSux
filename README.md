@@ -77,6 +77,7 @@ This repository is set up for independent development and testing. Make modifica
 - Default behavior on this branch is **DM disabled** for C3 testing. A new toggle lives under `Settings ▸ Device ▸ Settings ▸ Disable Driver Monitoring (Dani)`.
 - When off, we publish stub driver monitoring/model messages, suppress DM alerts/force-decel, and keep the driver cam/IR off by default. Turn the toggle off and reboot to keep DM off; turn it on and reboot to re-enable the camera/DM path.
 - This is a temporary shim while the new driver monitor is being developed.
+- A second option, `Gentle Driver Reminder (3 min)`, keeps DM very light: a single beep every 3 minutes of no attention, no disengage or steering shake. Looking back resets the 3-minute timer.
 
 > [!WARNING]
 > **CRITICAL**: Always base your work on `staging-tici` branch only. This repository is specifically for comma 3 devices. Do not merge or use code from branches intended for comma 3X or other devices.
@@ -109,6 +110,272 @@ The remote is already configured to point to: `https://github.com/bderkhan/C3Dan
 ### Branch Structure
 
 - `custom-staging-c3` - Main development branch based on `staging-tici`
+
+## 🧪 Testing & Debugging
+
+### Connecting to Your Device
+
+#### SSH Access (Recommended)
+
+1. **Enable SSH on your device:**
+   - Go to `Settings` ▶️ `Software`
+   - Enable SSH
+   - Enter your GitHub username (device will fetch your SSH keys)
+
+2. **Connect via WiFi (tethered connection):**
+   ```bash
+   ssh comma@192.168.43.1
+   ```
+
+3. **Connect via comma Prime (remote access):**
+   - Requires [comma Prime subscription](https://comma.ai/connect)
+   - Add to your `~/.ssh/config`:
+     ```
+     Host comma-*
+       Port 22
+       User comma
+       IdentityFile ~/.ssh/my_github_key
+       ProxyCommand ssh %h@ssh.comma.ai -W %h:%p
+     
+     Host ssh.comma.ai
+       Hostname ssh.comma.ai
+       Port 22
+       IdentityFile ~/.ssh/my_github_key
+     ```
+   - Connect: `ssh comma-{dongle_id}`
+
+#### ADB Access
+
+1. **Enable ADB on your device:**
+   - Plug device into constant power (port 2)
+   - Enable ADB in `Settings` ▶️ `Software`
+   - Plug USB cable into port 1
+
+2. **Connect:**
+   ```bash
+   # Over USB
+   adb shell
+   
+   # Over WiFi
+   adb connect 192.168.43.1:5555
+   ```
+
+#### Serial Console (Low-level debugging)
+
+For comma three:
+```bash
+# From your local repo
+tools/scripts/serial.sh
+```
+- Username: `comma`
+- Password: `comma`
+
+### Viewing Logs
+
+#### On-Device Log Access
+
+Once connected via SSH or ADB:
+
+```bash
+# View system logs
+journalctl -u manager -f
+
+# View specific process logs
+journalctl -u controlsd -f
+journalctl -u dmonitoringd -f
+journalctl -u dmonitoringmodeld -f
+
+# View all openpilot logs
+journalctl -u manager -u controlsd -u dmonitoringd -f
+
+# View recent boot logs
+journalctl -b | tail -100
+```
+
+#### Accessing Recorded Routes
+
+Routes are stored in `/data/media/0/realdata/`:
+
+```bash
+# List recent routes
+ls -lth /data/media/0/realdata/ | head -20
+
+# View route structure
+ls -la /data/media/0/realdata/{route_name}/
+```
+
+Each route contains:
+- `rlog.bz2` - All messages between processes (bzip2 compressed capnproto)
+- `fcamera.hevc` - Road camera (H.265)
+- `ecamera.hevc` - Wide road camera (H.265)
+- `dcamera.hevc` - Driver camera (H.265)
+- `qlog.bz2` - Decimated subset of rlog
+- `qcamera.ts` - Lower res road camera (H.264)
+
+#### Downloading Logs for Analysis
+
+```bash
+# From your local machine
+scp comma@192.168.43.1:/data/media/0/realdata/{route_name}/* ./logs/
+
+# Or use ADB
+adb pull /data/media/0/realdata/{route_name} ./logs/
+```
+
+### Debugging Tools
+
+#### Live CAN Message Streaming
+
+1. **On device (SSH):**
+   ```bash
+   cd /data/openpilot/cereal/messaging/
+   ./bridge &
+   ```
+
+2. **On your PC:**
+   ```bash
+   # Using Cabana
+   cabana --zmq 192.168.43.1
+   ```
+
+#### Live Camera Stream
+
+1. **On device (SSH):**
+   ```bash
+   (
+     cd /data/openpilot/cereal/messaging/
+     ./bridge &
+     
+     cd /data/openpilot/system/camerad/
+     ./camerad &
+     
+     cd /data/openpilot/system/loggerd/
+     ./encoderd &
+     
+     wait
+   ) ; trap 'kill $(jobs -p)' SIGINT
+   ```
+
+2. **On your PC:**
+   ```bash
+   # Decode stream
+   cd tools/camerastream
+   ./compressed_vipc.py 192.168.43.1
+   
+   # View stream (separate terminal)
+   cd selfdrive/ui
+   ./watch3
+   ```
+
+#### Checking Process Status
+
+```bash
+# Check if processes are running
+ps aux | grep -E "manager|controlsd|dmonitoring"
+
+# Check process health
+systemctl status manager
+systemctl status controlsd
+systemctl status dmonitoringd
+
+# View process logs in real-time
+tail -f /tmp/shm/logcat
+```
+
+### Testing Your Changes
+
+#### Quick Test Workflow
+
+1. **Make changes locally** and push to GitHub:
+   ```bash
+   git add .
+   git commit -m "Your changes"
+   git push origin custom-staging-c3
+   ```
+
+2. **On device, update to latest:**
+   - Go to `Settings` ▶️ `Software`
+   - Press `CHECK` at `Download`
+   - Device will download and install latest commit
+
+3. **Reboot device** to ensure clean state
+
+4. **Test functionality:**
+   - Drive and test your changes
+   - Monitor logs via SSH if needed
+   - Check for errors in `journalctl`
+
+#### Testing DM Toggle
+
+1. **Install/update** to latest version
+2. **Reboot** device
+3. **Navigate** to `Settings` ▶️ `Device` ▶️ `Settings`
+4. **Toggle** "Disable Driver Monitoring (Dani)"
+5. **Reboot** again (required for camera state changes)
+6. **Verify:**
+   - When disabled: No DM alerts, driver cam off
+   - When enabled: DM alerts active, driver cam on
+   - Check logs: `journalctl -u dmonitoringd -f`
+
+### Common Issues & Troubleshooting
+
+#### Device Won't Boot After Update
+
+1. **Access serial console** (see above)
+2. **Check boot logs:**
+   ```bash
+   journalctl -b | grep -i error
+   ```
+3. **Factory reset** if needed:
+   - `Settings` ▶️ `Software` ▶️ `Uninstall`
+
+#### Process Crashes
+
+1. **Check crash logs:**
+   ```bash
+   journalctl -u manager --since "10 minutes ago" | grep -i error
+   ```
+
+2. **Check system resources:**
+   ```bash
+   df -h  # Check disk space
+   free -h  # Check memory
+   top  # Check CPU usage
+   ```
+
+#### DM Toggle Not Working
+
+1. **Verify param is set:**
+   ```bash
+   # SSH into device
+   cat /data/params/d/DisableDriverMonitoring
+   ```
+
+2. **Check dmonitoringd logs:**
+   ```bash
+   journalctl -u dmonitoringd -f
+   ```
+
+3. **Restart services:**
+   ```bash
+   systemctl restart manager
+   ```
+
+#### Can't Connect via SSH
+
+1. **Verify SSH is enabled** in device settings
+2. **Re-enter GitHub username** in settings (refreshes SSH keys)
+3. **Check device IP:**
+   - Device shows IP on screen when tethered
+   - Default: `192.168.43.1` when tethered
+4. **Try ADB instead** as alternative
+
+### Additional Resources
+
+- **openpilot Developer Docs**: https://docs.comma.ai/
+- **openpilot Wiki**: https://github.com/commaai/openpilot/wiki
+- **sunnypilot Discord**: https://discord.gg/sunnypilot (for community support)
+- **Log Analysis Tools**: See `tools/lib/logreader.py` for reading logs programmatically
 
 ## 📄 License
 
