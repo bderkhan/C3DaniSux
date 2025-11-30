@@ -44,6 +44,29 @@ To install this custom version on your comma 3:
 
 This repository is set up for independent development and testing. Make modifications as needed and push to your own branch.
 
+### Cloning and Setting Up
+
+To clone this repository:
+
+```bash
+git clone https://github.com/bderkhan/C3DaniSux.git
+cd C3DaniSux
+git checkout custom-staging-c3
+```
+
+### Pushing Changes
+
+To push your changes to this repository:
+
+```bash
+# Make your changes, then:
+git add .
+git commit -m "Your commit message"
+git push origin custom-staging-c3
+```
+
+The remote is already configured to point to: `https://github.com/bderkhan/C3DaniSux.git`
+
 ### Branch Structure
 
 - `custom-staging-c3` - Main development branch based on `staging-tici`
