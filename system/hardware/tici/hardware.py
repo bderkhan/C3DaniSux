@@ -17,6 +17,7 @@ from openpilot.system.hardware.tici.pins import GPIO
 from openpilot.system.hardware.tici.amplifier import Amplifier
 
 MODEM_STATE_PATH = "/dev/shm/modem"
+IR_BLASTER_ENABLED = False
 
 NetworkType = log.DeviceState.NetworkType
 NetworkStrength = log.DeviceState.NetworkStrength
@@ -99,6 +100,9 @@ class Tici(HardwareBase):
       return int(f.read())
 
   def set_ir_power(self, percent: int):
+    if not IR_BLASTER_ENABLED:
+      return
+
     if self.get_device_type() == "tizi":
       return
 

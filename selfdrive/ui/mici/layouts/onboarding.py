@@ -20,6 +20,8 @@ from openpilot.selfdrive.ui.mici.onroad.driver_state import DriverStateRenderer
 from openpilot.selfdrive.ui.mici.onroad.driver_camera_dialog import BaseDriverCameraDialog
 from openpilot.selfdrive.ui.sunnypilot.mici.layouts.onboarding import SunnylinkConsentPage
 
+STOCK_DRIVER_MONITORING_ENABLED = False
+
 
 class DriverCameraSetupDialog(BaseDriverCameraDialog):
   def __init__(self):
@@ -263,12 +265,18 @@ class TrainingGuide(NavWidget):
   def __init__(self, completed_callback: Callable[[], None]):
     super().__init__()
 
-    self._steps = [
-      TrainingGuideAttentionNotice(continue_callback=lambda: gui_app.push_widget(self._steps[1])),
-      TrainingGuidePreDMTutorial(continue_callback=lambda: gui_app.push_widget(self._steps[2])),
-      TrainingGuideDMTutorial(continue_callback=lambda: gui_app.push_widget(self._steps[3])),
-      TrainingGuideRecordFront(continue_callback=completed_callback),
-    ]
+    if STOCK_DRIVER_MONITORING_ENABLED:
+      self._steps = [
+        TrainingGuideAttentionNotice(continue_callback=lambda: gui_app.push_widget(self._steps[1])),
+        TrainingGuidePreDMTutorial(continue_callback=lambda: gui_app.push_widget(self._steps[2])),
+        TrainingGuideDMTutorial(continue_callback=lambda: gui_app.push_widget(self._steps[3])),
+        TrainingGuideRecordFront(continue_callback=completed_callback),
+      ]
+    else:
+      self._steps = [
+        TrainingGuideAttentionNotice(continue_callback=lambda: gui_app.push_widget(self._steps[1])),
+        TrainingGuideRecordFront(continue_callback=completed_callback),
+      ]
 
     self._child(self._steps[0])
     self._steps[0].set_enabled(lambda: self.enabled and not self.is_dismissing)  # for nav stack

@@ -13,9 +13,10 @@ static void tres_update_fan_ir_power(void) {
 }
 
 static void tres_set_ir_power(uint8_t percentage){
-  tres_ir_enabled = (percentage > 0U);
+  UNUSED(percentage);
+  tres_ir_enabled = false;
   tres_update_fan_ir_power();
-  pwm_set(TIM3, 4, percentage);
+  pwm_set(TIM3, 4, 0U);
 }
 
 static void tres_set_bootkick(BootState state) {

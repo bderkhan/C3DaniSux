@@ -12,6 +12,8 @@
 
 class HardwareTici : public HardwareNone {
 public:
+  static constexpr bool IR_BLASTER_ENABLED = false;
+
   static std::string get_name() {
     static const std::string name = []() {
       std::string model = util::read_file("/sys/firmware/devicetree/base/model");
@@ -53,6 +55,11 @@ public:
   }
 
   static void set_ir_power(int percent) {
+    if (!IR_BLASTER_ENABLED) {
+      (void)percent;
+      return;
+    }
+
     auto device = get_device_type();
     if (device == cereal::InitData::DeviceType::TICI ||
         device == cereal::InitData::DeviceType::TIZI) {
