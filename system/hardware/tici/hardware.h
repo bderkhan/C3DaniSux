@@ -13,6 +13,8 @@
 
 class HardwareTici : public HardwareNone {
 public:
+  static constexpr bool IR_BLASTER_ENABLED = false;
+
   static bool TICI() { return true; }
   static bool AGNOS() { return true; }
   static std::string get_os_version() {
@@ -67,6 +69,11 @@ public:
   }
 
   static void set_ir_power(int percent) {
+    if (!IR_BLASTER_ENABLED) {
+      (void)percent;
+      return;
+    }
+
     auto device = get_device_type();
     if (device == cereal::InitData::DeviceType::TICI ||
         device == cereal::InitData::DeviceType::TIZI) {
