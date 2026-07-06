@@ -13,6 +13,7 @@ from openpilot.common.git import get_commit, get_origin, get_branch, get_short_b
 RELEASE_SP_BRANCHES = ['release-c3']
 TESTED_SP_BRANCHES = ['staging-c3', 'staging-c3-new', 'staging-tici']
 MASTER_SP_BRANCHES = ['master']
+TICI_PRIVATE_BRANCHES = ['Comma3BKV']
 RELEASE_BRANCHES = ['release3-staging', 'release3', 'release-tici', 'nightly'] + RELEASE_SP_BRANCHES
 TESTED_BRANCHES = RELEASE_BRANCHES + ['devel', 'devel-staging', 'nightly-dev'] + TESTED_SP_BRANCHES
 
@@ -135,7 +136,7 @@ class BuildMetadata:
 
   @property
   def channel_type(self) -> str:
-    if self.channel.endswith("-tici"):
+    if self.channel.endswith("-tici") or self.channel in TICI_PRIVATE_BRANCHES:
       return "tici"
     elif self.development_channel:
       return "development"
