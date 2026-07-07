@@ -35,6 +35,7 @@ from openpilot.iqpilot.selfdrive.selfdrived.events import IQEvents
 REPLAY = "REPLAY" in os.environ
 SIMULATION = "SIMULATION" in os.environ
 TESTING_CLOSET = "TESTING_CLOSET" in os.environ
+STOCK_DRIVER_MONITORING_ENABLED = False
 
 LONGITUDINAL_PERSONALITY_MAP = {v: k for k, v in log.LongitudinalPersonality.schema.enumerants.items()}
 
@@ -98,6 +99,8 @@ class SelfdriveD(CruiseHelper):
     self.car_state_sock = messaging.sub_sock('carState', timeout=20)
 
     ignore = self.sensor_packets + self.gps_packets + ['alertDebug', 'lateralManeuverPlan', 'iqDriveModelData', 'iqNavState', 'liveParameters', 'driverAssistance', 'testJoystick']
+    if not STOCK_DRIVER_MONITORING_ENABLED:
+      ignore += ['driverMonitoringState']
     if os.path.exists('/tmp/lite_hw'):
       ignore += ['driverCameraState', 'driverMonitoringState']
     if SIMULATION:
@@ -199,6 +202,10 @@ class SelfdriveD(CruiseHelper):
       self._cached_plan_event_names = tuple(event.name.raw for event in self._get_longitudinal_plan_ext().events)
 
   def _refresh_cached_dm_events(self) -> None:
+    if not STOCK_DRIVER_MONITORING_ENABLED:
+      self._cached_dm_event_names = ()
+      return
+
     if self.sm.updated['driverMonitoringState']:
       self._cached_dm_event_names = tuple(event.name.raw for event in self.sm['driverMonitoringState'].events)
 

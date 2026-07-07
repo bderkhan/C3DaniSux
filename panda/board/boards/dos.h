@@ -55,7 +55,8 @@ static void dos_set_can_mode(uint8_t mode) {
 }
 
 static void dos_set_ir_power(uint8_t percentage){
-  pwm_set(TIM4, 2, percentage);
+  UNUSED(percentage);
+  pwm_set(TIM4, 2, 0U);
 }
 
 static void dos_set_fan_enabled(bool enabled){

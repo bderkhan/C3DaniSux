@@ -85,7 +85,7 @@ int comms_control_handler(ControlPacket_t *req, uint8_t *resp) {
       break;
     // **** 0xb0: set IR power
     case 0xb0:
-      current_board->set_ir_power(req->param1);
+      current_board->set_ir_power(0U);
       break;
     // **** 0xb1: set fan power
     case 0xb1:

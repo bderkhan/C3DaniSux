@@ -11,6 +11,7 @@ from openpilot.common.swaglog import cloudlog
 from openpilot.common.git import get_commit, get_origin, get_branch, get_short_branch, get_commit_date
 
 RELEASE_IQ_BRANCHES = ['release', 'release-tici', 'release-new']
+PRIVATE_TICI_BRANCHES = ['dani-sux']
 TESTED_BRANCHES = RELEASE_IQ_BRANCHES
 IQ_BRANCH_MIGRATIONS: dict[tuple[str, str], str] = {}
 
@@ -127,7 +128,7 @@ class BuildMetadata:
 
   @property
   def channel_type(self) -> str:
-    if "-tici" in self.channel or self.channel in ("release-new" or "master-mici"):
+    if "-tici" in self.channel or self.channel in ("release-new", "master-mici") or self.channel in PRIVATE_TICI_BRANCHES:
       return "tici"
     elif self.development_channel:
       return "development"

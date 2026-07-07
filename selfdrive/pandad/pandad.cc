@@ -40,6 +40,7 @@
 #define MAX_IR_PANDA_VAL 50
 #define CUTOFF_IL 400
 #define SATURATE_IL 1000
+static constexpr bool IR_BLASTER_ENABLED = false;
 
 #define ALT_EXP_AOL_DISENGAGE_LATERAL_ON_BRAKE 2048
 
@@ -481,11 +482,12 @@ void process_peripheral_state(Panda *panda, PubMaster *pm, bool no_fan_control) 
     }
 
     int frame = sm != nullptr ? sm->frame : 0;
-    if (ir_pwr != prev_ir_pwr || frame % 100 == 0) {
-      int16_t ir_panda = util::map_val(ir_pwr, 0, 100, 0, MAX_IR_PANDA_VAL);
+    int effective_ir_pwr = IR_BLASTER_ENABLED ? ir_pwr : 0;
+    if (effective_ir_pwr != prev_ir_pwr || frame % 100 == 0) {
+      int16_t ir_panda = util::map_val(effective_ir_pwr, 0, 100, 0, MAX_IR_PANDA_VAL);
       panda->set_ir_pwr(ir_panda);
-      Hardware::set_ir_power(ir_pwr);
-      prev_ir_pwr = ir_pwr;
+      Hardware::set_ir_power(effective_ir_pwr);
+      prev_ir_pwr = effective_ir_pwr;
     }
   }
 }

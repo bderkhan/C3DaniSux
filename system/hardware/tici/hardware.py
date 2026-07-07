@@ -61,6 +61,7 @@ class NMMetered(IntEnum):
 
 TIMEOUT = 0.1
 REFRESH_RATE_MS = 1000
+IR_BLASTER_ENABLED = False
 
 NetworkType = log.DeviceState.NetworkType
 NetworkStrength = log.DeviceState.NetworkStrength
@@ -176,6 +177,9 @@ class Tici(HardwareBase):
       return int(f.read())
 
   def set_ir_power(self, percent: int):
+    if not IR_BLASTER_ENABLED:
+      return
+
     if self.get_device_type() in ("tici", "tizi"):
       return
 

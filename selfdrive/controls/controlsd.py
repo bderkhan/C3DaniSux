@@ -32,6 +32,7 @@ LaneChangeState = log.LaneChangeState
 LaneChangeDirection = log.LaneChangeDirection
 NavManeuverPhase = custom.IQNavState.ManeuverPhase
 NavDirection = custom.NavDirection
+STOCK_DRIVER_MONITORING_ENABLED = False
 
 ACTUATOR_FIELDS = tuple(car.CarControl.Actuators.schema.fields.keys())
 CTRL_ESSENTIAL_SERVICES = ("carState", "modelV2", "longitudinalPlan", "liveParameters", "selfdriveState")
@@ -336,7 +337,7 @@ class Controls(ControlsExt):
     cs.upAccelCmd = float(self.LoC.pid.p)
     cs.uiAccelCmd = float(self.LoC.pid.i)
     cs.ufAccelCmd = float(self.LoC.pid.f)
-    cs.forceDecel = bool((self.sm['driverMonitoringState'].awarenessStatus < 0.) or
+    cs.forceDecel = bool((STOCK_DRIVER_MONITORING_ENABLED and self.sm['driverMonitoringState'].awarenessStatus < 0.) or
                          (self.sm['selfdriveState'].state == State.softDisabling))
 
     lat_tuning = self.CP.lateralTuning.which()
