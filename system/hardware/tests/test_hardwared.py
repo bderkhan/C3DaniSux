@@ -10,8 +10,8 @@ def test_beta_pq_allowed_for_tici():
 
 
 def test_private_handoff_branch_allowed_for_tici():
-  metadata = SimpleNamespace(channel="dani-sux", channel_type="feature")
-  assert "dani-sux" in ALLOWED_TICI_BRANCHES
+  metadata = SimpleNamespace(channel="c3iq", channel_type="feature")
+  assert "c3iq" in ALLOWED_TICI_BRANCHES
   assert is_supported_tici_branch(metadata)
 
 
