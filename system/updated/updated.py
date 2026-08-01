@@ -18,7 +18,7 @@ from openpilot.common.markdown import parse_markdown
 from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.selfdrived.alertmanager import set_offroad_alert
 from openpilot.system.hardware import AGNOS, HARDWARE
-from openpilot.system.version import get_build_metadata, SP_BRANCH_MIGRATIONS
+from openpilot.system.version import get_build_metadata, SP_BRANCH_MIGRATIONS, UPDATES_DISABLED_BRANCHES
 
 LOCK_FILE = os.getenv("UPDATER_LOCK_FILE", "/tmp/safe_staging_overlay.lock")
 STAGING_ROOT = os.getenv("UPDATER_STAGING_ROOT", "/data/safe_staging")
@@ -398,6 +398,17 @@ class Updater:
 
 def main() -> None:
   params = Params()
+  build_metadata = get_build_metadata()
+
+  if build_metadata.channel in UPDATES_DISABLED_BRANCHES:
+    cloudlog.warning(f"updates are disabled for private handoff branch {build_metadata.channel}")
+    params.put("UpdaterState", "disabled")
+    params.put_bool("UpdateAvailable", False)
+    params.put_bool("UpdaterFetchAvailable", False)
+    params.remove("LastUpdateException")
+    for alert in ("Offroad_UpdateFailed", "Offroad_ConnectivityNeeded", "Offroad_ConnectivityNeededPrompt"):
+      set_offroad_alert(alert, False)
+    exit(0)
 
   if params.get_bool("DisableUpdates"):
     cloudlog.warning("updates are disabled by the DisableUpdates param")

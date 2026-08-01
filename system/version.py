@@ -14,6 +14,7 @@ RELEASE_SP_BRANCHES = ['release-c3']
 TESTED_SP_BRANCHES = ['staging-c3', 'staging-c3-new', 'staging-tici']
 MASTER_SP_BRANCHES = ['master']
 TICI_PRIVATE_BRANCHES = ['Comma3BKV']
+UPDATES_DISABLED_BRANCHES = ['Comma3BKV']
 RELEASE_BRANCHES = ['release3-staging', 'release3', 'release-tici', 'nightly'] + RELEASE_SP_BRANCHES
 TESTED_BRANCHES = RELEASE_BRANCHES + ['devel', 'devel-staging', 'nightly-dev'] + TESTED_SP_BRANCHES
 

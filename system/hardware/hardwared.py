@@ -24,7 +24,7 @@ from openpilot.system.statsd import statlog
 from openpilot.common.swaglog import cloudlog
 from openpilot.system.hardware.power_monitoring import PowerMonitoring
 from openpilot.system.hardware.fan_controller import TiciFanController
-from openpilot.system.version import terms_version, training_version, get_build_metadata
+from openpilot.system.version import terms_version, training_version, get_build_metadata, UPDATES_DISABLED_BRANCHES
 
 ThermalStatus = log.DeviceState.ThermalStatus
 NetworkType = log.DeviceState.NetworkType
@@ -304,7 +304,12 @@ def hardware_thread(end_event, hw_queue) -> None:
 
     # **** starting logic ****
 
-    startup_conditions["up_to_date"] = params.get("Offroad_ConnectivityNeeded") is None or params.get_bool("DisableUpdates") or params.get_bool("SnoozeUpdate")
+    build_metadata = get_build_metadata()
+    updates_disabled_for_branch = build_metadata.channel in UPDATES_DISABLED_BRANCHES
+    startup_conditions["up_to_date"] = (updates_disabled_for_branch or
+                                        params.get("Offroad_ConnectivityNeeded") is None or
+                                        params.get_bool("DisableUpdates") or
+                                        params.get_bool("SnoozeUpdate"))
     startup_conditions["no_excessive_actuation"] = params.get("Offroad_ExcessiveActuation") is None
     startup_conditions["not_uninstalling"] = not params.get_bool("DoUninstall")
     startup_conditions["accepted_terms"] = params.get("HasAcceptedTerms") == terms_version
@@ -330,7 +335,6 @@ def hardware_thread(end_event, hw_queue) -> None:
     # only allow going onroad when:
     # - TIZI, or
     # - TICI and channel_type is "tici"
-    build_metadata = get_build_metadata()
     is_unsupported_combo = TICI and HARDWARE.get_device_type() == "tici" and build_metadata.channel_type != "tici"
     startup_conditions["not_tici"] = not is_unsupported_combo
     onroad_conditions["not_tici"] = not is_unsupported_combo

@@ -7,6 +7,7 @@ from openpilot.common.params import Params
 from openpilot.system.hardware import PC, TICI
 from openpilot.system.manager.process import PythonProcess, NativeProcess, DaemonProcess
 from openpilot.system.hardware.hw import Paths
+from openpilot.system.version import get_build_metadata, UPDATES_DISABLED_BRANCHES
 
 from openpilot.sunnypilot.mapd.mapd_manager import MAPD_PATH
 
@@ -15,6 +16,7 @@ from sunnypilot.sunnylink.utils import sunnylink_need_register, sunnylink_ready,
 
 WEBCAM = os.getenv("USE_WEBCAM") is not None
 STOCK_DRIVER_MONITORING_ENABLED = False
+UPDATES_ENABLED_FOR_BRANCH = get_build_metadata().channel not in UPDATES_DISABLED_BRANCHES
 
 def driverview(started: bool, params: Params, CP: car.CarParams) -> bool:
   return started or params.get_bool("IsDriverViewEnabled")
@@ -61,6 +63,9 @@ def only_onroad(started: bool, params: Params, CP: car.CarParams) -> bool:
 
 def only_offroad(started: bool, params: Params, CP: car.CarParams) -> bool:
   return not started
+
+def updater_allowed(started: bool, params: Params, CP: car.CarParams) -> bool:
+  return only_offroad(started, params, CP) and UPDATES_ENABLED_FOR_BRANCH
 
 def use_github_runner(started, params, CP: car.CarParams) -> bool:
   return not PC and params.get_bool("EnableGithubRunner") and (
@@ -147,7 +152,7 @@ procs = [
   PythonProcess("radard", "selfdrive.controls.radard", only_onroad),
   PythonProcess("hardwared", "system.hardware.hardwared", always_run),
   PythonProcess("tombstoned", "system.tombstoned", always_run, enabled=not PC),
-  PythonProcess("updated", "system.updated.updated", only_offroad, enabled=not PC),
+  PythonProcess("updated", "system.updated.updated", updater_allowed, enabled=not PC),
   PythonProcess("uploader", "system.loggerd.uploader", always_run),
   PythonProcess("statsd", "system.statsd", always_run),
   PythonProcess("feedbackd", "selfdrive.ui.feedback.feedbackd", only_onroad),
